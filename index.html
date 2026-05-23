@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoreo IoT Café</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Scripts de Firebase (Versión de compatibilidad para fácil uso) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-amber-50/30 font-sans">
+
+    <div class="container mx-auto p-6">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-amber-900">Dashboard IoT - Empaque de Café</h1>
+            <p class="text-gray-600">Monitoreo 100% Inalámbrico en Tiempo Real</p>
+        </header>
+
+        <!-- Tarjetas en Tiempo Real -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
+                <h3 class="text-gray-400 font-medium text-sm uppercase">Humedad Ambiente</h3>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="humedad-val">0.0%</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-orange-500">
+                <h3 class="text-gray-400 font-medium text-sm uppercase">Temperatura</h3>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="temp-val">0.0°C</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500">
+                <h3 class="text-gray-400 font-medium text-sm uppercase">Presión</h3>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="presion-val">0.0 hPa</p>
+            </div>
+        </div>
+
+        <!-- Gráfica -->
+        <div class="bg-white p-6 rounded-xl shadow-sm">
+            <canvas id="graficaTiempoReal" class="h-64"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 1. Configuración de Firebase en el Navegador
+        const firebaseConfig = {
+            databaseURL: "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 2. Inicializar Chart.js
+        const ctx = document.getElementById('graficaTiempoReal').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humedad %',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    tension: 0.2,
+                    fill: false
+                }]
+            },
+            options: { responsive: true, scales: { y: { min: 0, max: 100 } } }
+        });
+
+        // 3. ESCUCHAR FIREBASE EN TIEMPO REAL
+        // Escucha el nodo 'actual' para cambiar los números de las tarjetas
+        database.ref('monitoreo_cafe/actual').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                document.getElementById('humedad-val').innerText = data.humedad.toFixed(1) + '%';
+                document.getElementById('temp-val').innerText = data.temperatura.toFixed(1) + '°C';
+                document.getElementById('presion-val').innerText = data.presion.toFixed(1) + ' hPa';
+                
+                // Añadir dato a la gráfica de forma dinámica
+                const ahora = new Date().toLocaleTimeString();
+                if (chart.data.labels.length > 15) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+                chart.data.labels.push(ahora);
+                chart.data.datasets[0].data.push(data.humedad);
+                chart.format // Forzar actualización visual
+                chart.update();
+            }
+        });
+    </script>
+</body>
+</html>
