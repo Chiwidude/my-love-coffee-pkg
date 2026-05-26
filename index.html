@@ -1,92 +1,153 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoreo IoT Café</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Scripts de Firebase (Versión de compatibilidad para fácil uso) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoreo IoT Café</title>
+  
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
 </head>
-<body class="bg-amber-50/30 font-sans">
+<body class="bg-gradient-to-br from-amber-50 to-orange-50 font-sans h-full m-0 p-0 box-border">
 
-    <div class="container mx-auto p-6">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-amber-900">Dashboard IoT - Empaque de Café</h1>
-            <p class="text-gray-600">Monitoreo 100% Inalámbrico en Tiempo Real</p>
-        </header>
+  <div class="w-full h-full overflow-auto">
+    <div class="container mx-auto p-6 pb-12">
+      
+      <header class="mb-8 text-center">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+          <span class="text-xs font-medium text-green-600">Conectado</span>
+        </div>
+        <h1 class="text-4xl font-bold text-amber-900 mb-2">Dashboard IoT</h1>
+        <p class="text-amber-700">Empaque de Café • Monitoreo en Tiempo Real</p>
+      </header>
 
-        <!-- Tarjetas en Tiempo Real -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
-                <h3 class="text-gray-400 font-medium text-sm uppercase">Humedad Ambiente</h3>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="humedad-val">0.0%</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-orange-500">
-                <h3 class="text-gray-400 font-medium text-sm uppercase">Temperatura</h3>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="temp-val">0.0°C</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-emerald-500">
-                <h3 class="text-gray-400 font-medium text-sm uppercase">Presión</h3>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="presion-val">0.0 hPa</p>
-            </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        
+        <div class="bg-white/80 backdrop-blur p-8 rounded-2xl shadow-lg border-t-4 border-blue-500 hover:shadow-xl hover:scale-105 transition-all duration-300">
+          <h3 class="text-gray-500 font-medium text-sm uppercase tracking-wide">Humedad Ambiente</h3>
+          <p class="text-5xl font-bold text-blue-600 mt-4" id="humedad-val">--</p>
+          <p class="text-gray-400 text-sm mt-2">Última actualización</p>
         </div>
 
-        <!-- Gráfica -->
-        <div class="bg-white p-6 rounded-xl shadow-sm">
-            <canvas id="graficaTiempoReal" class="h-64"></canvas>
+        <div class="bg-white/80 backdrop-blur p-8 rounded-2xl shadow-lg border-t-4 border-orange-500 hover:shadow-xl hover:scale-105 transition-all duration-300">
+          <h3 class="text-gray-500 font-medium text-sm uppercase tracking-wide">Temperatura</h3>
+          <p class="text-5xl font-bold text-orange-600 mt-4" id="temp-val">--</p>
+          <p class="text-gray-400 text-sm mt-2">Grados Celsius</p>
         </div>
+
+        <div class="bg-white/80 backdrop-blur p-8 rounded-2xl shadow-lg border-t-4 border-emerald-500 hover:shadow-xl hover:scale-105 transition-all duration-300">
+          <h3 class="text-gray-500 font-medium text-sm uppercase tracking-wide">Presión</h3>
+          <p class="text-5xl font-bold text-emerald-600 mt-4" id="presion-val">--</p>
+          <p class="text-gray-400 text-sm mt-2">Hectopascales</p>
+        </div>
+
+      </div>
+
+      <div class="bg-white/80 backdrop-blur p-8 rounded-2xl shadow-lg">
+        <h2 class="text-lg font-bold text-gray-800 mb-6">Gráfica de Humedad</h2>
+        <div class="relative h-[350px]">
+          <canvas id="graficaTiempoReal"></canvas>
+        </div>
+      </div>
+
     </div>
+  </div>
 
-    <script>
-        // 1. Configuración de Firebase en el Navegador
-        const firebaseConfig = {
-            databaseURL: "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/"
-        };
+  <script>
+    // Inicializar iconos de Lucide (por si agregan más tarde)
+    lucide.createIcons();
+
+    const firebaseConfig = {
+        databaseURL: "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/"
+    };
+    
+    try {
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+    } catch(e) {
+        console.log("Firebase ya inicializado");
+    }
+    
+    const database = firebase.database();
 
-        // 2. Inicializar Chart.js
-        const ctx = document.getElementById('graficaTiempoReal').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Humedad %',
-                    data: [],
-                    borderColor: '#3b82f6',
-                    tension: 0.2,
-                    fill: false
-                }]
-            },
-            options: { responsive: true, scales: { y: { min: 0, max: 100 } } }
-        });
-
-        // 3. ESCUCHAR FIREBASE EN TIEMPO REAL
-        // Escucha el nodo 'actual' para cambiar los números de las tarjetas
-        database.ref('monitoreo_cafe/actual').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                document.getElementById('humedad-val').innerText = data.humedad.toFixed(1) + '%';
-                document.getElementById('temp-val').innerText = data.temperatura.toFixed(1) + '°C';
-                document.getElementById('presion-val').innerText = data.presion.toFixed(1) + ' hPa';
-                
-                // Añadir dato a la gráfica de forma dinámica
-                const ahora = new Date().toLocaleTimeString();
-                if (chart.data.labels.length > 15) {
-                    chart.data.labels.shift();
-                    chart.data.datasets[0].data.shift();
+    // Configuración del gráfico de Chart.js
+    const ctx = document.getElementById('graficaTiempoReal').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Humedad %',
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#666', font: { size: 14 } }
                 }
-                chart.data.labels.push(ahora);
-                chart.data.datasets[0].data.push(data.humedad);
-                chart.format // Forzar actualización visual
-                chart.update();
+            },
+            scales: { 
+                y: { 
+                    min: 0, 
+                    max: 100,
+                    ticks: { color: '#999' },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    ticks: { color: '#999' },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                }
             }
-        });
-    </script>
+        }
+    });
+
+    // Escucha de Firebase Realtime
+    database.ref('monitoreo_cafe/actual').on('value', (snapshot) => {
+        const data = snapshot.val();
+
+        if(data) {
+            // 1. Actualizar los textos de las tarjetas
+            document.getElementById('humedad-val').innerText = data.humedad.toFixed(1) + '%';
+            document.getElementById('temp-val').innerText = data.temperatura.toFixed(1) + '°C';
+            document.getElementById('presion-val').innerText = data.presion.toFixed(1) + ' hPa';
+
+            // 2. Extraer solo el "HH:MM:SS" del timestamp que viene de Python
+            const horaLectura = data.timestamp.split(' ')[1]; 
+
+            // 3. Controlar que la gráfica no se llene de demasiados puntos (Máximo 15)
+            if (chart.data.labels.length > 15) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            // 4. Agregar la hora del sensor y el valor de humedad a la gráfica
+            chart.data.labels.push(horaLectura); // <-- Usamos la hora del sensor real
+            chart.data.datasets[0].data.push(data.humedad);
+            
+            // 5. Renderizar los cambios
+            chart.update();
+        }
+    }, (error) => {
+        console.error("Error conectando a Firebase:", error);
+    });
+  </script>
 </body>
 </html>
