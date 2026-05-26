@@ -1,77 +1,90 @@
 import serial
 import time
+import requests  # Librería para enviar datos a internet
 
 # =====================================================================
-# CONFIGURACIÓN INICIAL
+# CONFIGURACIÓN INICIAL Y ENLACES
 # =====================================================================
-# ⚠️ IMPORTANTE: Cambien 'COM3' por el puerto real que vieron en su Arduino IDE
+# ⚠️ CAMBIEN ESTOS 2 VALORES CON SUS DATOS REALES:
 PUERTO_SERIAL = 'COM3' 
+
+# Copien la URL de su Realtime Database (debe terminar en ".firebaseio.com/")
+URL_FIREBASE = "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/monitoreo_cafe.json"
+
 BAUDIOS = 9600
 
+def enviar_a_firebase(t, h, p):
+    """Envía un paquete de datos en formato JSON a Firebase Realtime Database"""
+    # Creamos la estructura de datos que subirá a internet
+    payload = {
+        "temperatura": t,
+        "humedad": h,
+        "presion": p,
+        "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    try:
+        # Hacemos una petición PUT para sobrescribir el estado actual en tiempo real
+        # (Si prefieren guardar un historial de lecturas, cambien 'put' por 'post')
+        respuesta = requests.put(URL_FIREBASE, json=payload, timeout=5)
+        
+        if respuesta.status_code == 200:
+            print(" -> [OK] Sincronizado con Firebase con éxito.")
+        else:
+            print(f" -> [⚠️] Firebase respondió con código de error: {respuesta.status_code}")
+            
+    except requests.exceptions.RequestException as e:
+        print(f" -> [❌] Error de red: No se pudo conectar a Firebase. Detalles: {e}")
+
 def iniciar_puente():
-    print("=== PUENTE SERIAL-USB INICIADO ===")
+    print("=== PUENTE SERIAL-USB A FIREBASE INICIADO ===")
     print(f"Buscando transmisiones en el puerto: {PUERTO_SERIAL}...")
     
     try:
-        # Abrimos la conexión con el cable USB del Arduino
         arduino = serial.Serial(PUERTO_SERIAL, BAUDIOS, timeout=1)
-        # Le damos 2 segundos al Arduino para que se reinicie tras la conexión
-        time.sleep(2) 
+        time.sleep(2) # Esperar estabilización del Arduino
         print("¡Conexión serial establecida con éxito!\n")
         
     except serial.SerialException as e:
-        print(f"\n❌ ERROR DE CONEXIÓN: No se pudo abrir el puerto {PUERTO_SERIAL}.")
-        print("Revisen que:")
-        print("  1. El Arduino esté conectado por USB.")
-        print("  2. El Monitor Serie del Arduino IDE esté CERRADO.")
-        print(f"Detalles del error: {e}")
+        print(f"\n❌ ERROR DE CONEXIÓN SERIAL: No se pudo abrir el puerto {PUERTO_SERIAL}.")
+        print("Asegúrense de cerrar el Monitor Serie del Arduino IDE.")
         return
 
     # =====================================================================
-    # BUCLE PRINCIPAL: ESCUCHAR EL USB DE FORMA CONTINUA
+    # BUCLE PRINCIPAL
     # =====================================================================
     while True:
         try:
-            # Leer una línea completa que venga del Arduino
             linea = arduino.readline().decode('utf-8').strip()
             
-            # Si la línea no está vacía, procesamos los datos
             if linea:
-                # El Arduino manda: "temperatura,humedad,presion" (Ej: "24.50,55.30,1011.20")
                 datos = linea.split(',')
                 
-                # Verificamos que vengan exactamente las 3 variables del sensor
                 if len(datos) == 3:
                     try:
                         temperatura = float(datos[0])
                         humedad = float(datos[1])
                         presion = float(datos[2])
                         
-                        # Imprimimos en la terminal de Miniconda para ver que todo va bien
+                        # Mostrar localmente en la consola de Miniconda
                         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Recibido -> "
-                              f"Temp: {temperatura:.2f}°C | "
-                              f"Hum: {humedad:.2f}% | "
-                              f"Presión: {presion:.2f} hPa")
+                              f"Temp: {temperatura:.2f}°C | Hum: {humedad:.2f}% | Presión: {presion:.2f} hPa", end="")
                         
-                        # -------------------------------------------------------
-                        # 🚀 AQUÍ IRÁ LA CONEXIÓN A INTERNET POSTERIORMENTE
-                        # Por ahora, dejamos el espacio listo para mandar a Firebase:
-                        # enviar_a_firebase(temperatura, humedad, presion)
-                        # -------------------------------------------------------
+                        # 🚀 ¡EL ESLABÓN PERDIDO! Enviamos los datos a la nube:
+                        enviar_a_firebase(temperatura, humedad, presion)
                         
                     except ValueError:
-                        print(f"⚠️ Alerta: Se recibieron datos corruptos o incompletos: '{linea}'")
+                        print(f"\n⚠️ Alerta: Datos corruptos recibidos: '{linea}'")
                 else:
-                    print(f"⚠️ Alerta: Formato inesperado en el bus: '{linea}'")
+                    print(f"\n⚠️ Alerta: Formato inesperado en el bus: '{linea}'")
                     
         except KeyboardInterrupt:
-            # Si presionan Ctrl + C en la terminal, el programa se cierra limpiamente
             print("\n👋 Cerrando el puente serial de forma segura...")
             arduino.close()
             break
             
         except Exception as e:
-            print(f"\n❌ Ocurrió un error inesperado en la lectura: {e}")
+            print(f"\n❌ Ocurrió un error inesperado: {e}")
             if 'arduino' in locals() and arduino.is_open:
                 arduino.close()
             break
