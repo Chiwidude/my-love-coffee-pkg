@@ -26,7 +26,7 @@ def enviar_a_firebase(t, h, p):
     try:
         # Hacemos una petición PUT para sobrescribir el estado actual en tiempo real
         # (Si prefieren guardar un historial de lecturas, cambien 'put' por 'post')
-        respuesta = requests.put(URL_FIREBASE, json=payload, timeout=5)
+        respuesta = requests.post(URL_FIREBASE, json=payload, timeout=5)
         
         if respuesta.status_code == 200:
             print(" -> [OK] Sincronizado con Firebase con éxito.")
