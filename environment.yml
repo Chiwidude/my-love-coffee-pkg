@@ -29,4 +29,11 @@ dependencies:
   - wheel=0.46.3=py311hca03da5_0
   - xz=5.8.2=h8bbcb1d_0
   - zlib=1.3.1=hb4cf58c_1
+  - pip:
+      - certifi==2026.5.20
+      - charset-normalizer==3.4.7
+      - idna==3.16
+      - pyserial==3.5
+      - requests==2.34.2
+      - urllib3==2.7.0
 prefix: /Users/franalonzo/miniconda3/envs/coffee_pkg_env
