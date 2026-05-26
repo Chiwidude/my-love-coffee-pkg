@@ -26,7 +26,7 @@ void setup() {
   
   // 4. Arrancamos los sensores reales y verificamos que respondan
   // Nota: 0x76 es la dirección física estándar del chip BMP280
-  if (!aht.begin() || !bmp.begin(0x76)) {
+  if (!aht.begin() || !bmp.begin(0x77)) {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Error Hardware!");
