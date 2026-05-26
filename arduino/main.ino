@@ -40,38 +40,31 @@ void setup() {
 }
 
 void loop() {
-  // Capturar las variables del sensor de humedad (AHT20)
   sensors_event_t humidity, temp;
-  aht.getEvent(&humidity, &temp); 
+  aht.getEvent(&humidity, &temp); // El AHT20 calcula humedad y temperatura exacta
   
-  // Leer los valores de temperatura y presión (BMP280)
-  float t = bmp.readTemperature();       // Temperatura en °C
-  float p = bmp.readPressure() / 100.0F; // Convierte la presión de Pascales a hPa
-  float h = humidity.relative_humidity;  // Humedad ambiente en %
+  // Usamos la temperatura del AHT20 porque su precisión es de ±0.3°C (Mejor que la del BMP280)
+  float t = temp.temperature;            
+  float h = humidity.relative_humidity;  // Humedad ambiente (Tarda 8s en responder)
+  
+  // El BMP280 lee la presión y usa su temperatura interna solo para compensar el cálculo
+  float p = bmp.readPressure() / 100.0F; 
 
-  // ─── 1. MOSTRAR DATOS EN EL EMPAQUE (PANTALLA LCD) ───
-  // Fila 1: Temperatura y Humedad Ambiente
+  // 1. Mostrar en LCD (Optimizado para 1 decimal por la resolución)
   lcd.setCursor(0, 0);
-  lcd.print("T:");
-  lcd.print(t, 1); // Muestra 1 decimal para que quepa bien
-  lcd.print("C ");
-  lcd.print("H:");
-  lcd.print(h, 1);
-  lcd.print("%");
+  lcd.print("T:"); lcd.print(t, 1); lcd.print("C ");
+  lcd.print("H:"); lcd.print(h, 1); lcd.print("%");
 
-  // Fila 2: Presión Atmosférica
   lcd.setCursor(0, 1);
-  lcd.print("P:");
-  lcd.print(p, 1);
-  lcd.print(" hPa");
+  lcd.print("P:"); lcd.print(p, 1); lcd.print(" hPa");
 
-  // ─── 2. ENVIAR DATOS A LA COMPUTADORA POR USB ───
-  // Enviamos los datos en formato "temperatura,humedad,presion"
+  // 2. Enviar a Python por USB
   Serial.print(t, 2);
   Serial.print(",");
   Serial.print(h, 2);
   Serial.print(",");
-  Serial.println(p, 2); // println incluye el salto de línea que Python espera
+  Serial.println(p, 2); 
 
-  delay(2000); // Tomar lecturas en bucle cada 2 segundos
+  // 3. Esperar 10 segundos (Suficiente para el tiempo de respuesta de 8s del AHT20)
+  delay(10000); 
 }
