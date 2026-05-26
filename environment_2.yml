@@ -1,0 +1,17 @@
+name: coffee_pkg_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - flask
+  - click
+  - jinja2
+  - markupsafe
+  - werkzeug
+  - itsdangerous
+  - blinker
+  - pip
+  - pip:
+      - pyserial==3.5
+      - requests==2.34.2
