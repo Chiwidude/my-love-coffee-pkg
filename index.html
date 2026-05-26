@@ -60,7 +60,6 @@
   </div>
 
   <script>
-    // Inicializar iconos de Lucide (por si agregan más tarde)
     lucide.createIcons();
 
     const firebaseConfig = {
@@ -119,30 +118,46 @@
         }
     });
 
-    // Escucha de Firebase Realtime
-    database.ref('monitoreo_cafe/actual').on('value', (snapshot) => {
+    // 🔄 MODIFICADO: Escuchamos la ruta raíz de 'monitoreo_cafe'
+    database.ref('monitoreo_cafe').on('value', (snapshot) => {
         const data = snapshot.val();
 
         if(data) {
-            // 1. Actualizar los textos de las tarjetas
-            document.getElementById('humedad-val').innerText = data.humedad.toFixed(1) + '%';
-            document.getElementById('temp-val').innerText = data.temperatura.toFixed(1) + '°C';
-            document.getElementById('presion-val').innerText = data.presion.toFixed(1) + ' hPa';
+            // Limpiamos la gráfica antes de cargar el historial
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
 
-            // 2. Extraer solo el "HH:MM:SS" del timestamp que viene de Python
-            const horaLectura = data.timestamp.split(' ')[1]; 
+            let ultimaLectura = null;
 
-            // 3. Controlar que la gráfica no se llene de demasiados puntos (Máximo 15)
-            if (chart.data.labels.length > 15) {
+            // Recorremos todos los nodos con IDs raros generados por el POST
+            Object.keys(data).forEach((idUnico) => {
+                const lectura = data[idUnico];
+                
+                // Extraer la hora HH:MM:SS del timestamp
+                const horaLectura = lectura.timestamp ? lectura.timestamp.split(' ')[1] : "--:--:--"; 
+                
+                // Añadir datos a los arreglos de la gráfica
+                chart.data.labels.push(horaLectura);
+                chart.data.datasets[0].data.push(lectura.humedad);
+
+                // Esta variable se irá actualizando y al final guardará el último elemento de la lista
+                ultimaLectura = lectura;
+            });
+
+            // Limitamos los puntos visibles en la gráfica a un máximo de 15 para mantener la estética
+            while (chart.data.labels.length > 15) {
                 chart.data.labels.shift();
                 chart.data.datasets[0].data.shift();
             }
 
-            // 4. Agregar la hora del sensor y el valor de humedad a la gráfica
-            chart.data.labels.push(horaLectura); // <-- Usamos la hora del sensor real
-            chart.data.datasets[0].data.push(data.humedad);
+            // Actualizamos los bloques numéricos con el dato más fresco del historial
+            if (ultimaLectura) {
+                document.getElementById('humedad-val').innerText = ultimaLectura.humedad.toFixed(1) + '%';
+                document.getElementById('temp-val').innerText = ultimaLectura.temperatura.toFixed(1) + '°C';
+                document.getElementById('presion-val').innerText = ultimaLectura.presion.toFixed(1) + ' hPa';
+            }
             
-            // 5. Renderizar los cambios
+            // Redibujar el gráfico animado
             chart.update();
         }
     }, (error) => {
