@@ -14,9 +14,9 @@ URL_FIREBASE = "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/monitoreo
 BAUDIOS = 9600
 
 def enviar_a_firebase(t, h, p):
-    """Envía un paquete de datos acumulativo a Firebase"""
-    # CAMBIO: Metemos los datos dentro de la "llave" del nodo histórico
-payload = {
+    """Envía un paquete de datos generando un ID único DENTRO de monitoreo_cafe"""
+    # El payload debe ir LIMPIO (sin la palabra monitoreo_cafe adentro)
+    payload = {
         "temperatura": t,
         "humedad": h,
         "presion": p,
@@ -24,17 +24,17 @@ payload = {
     }
     
     try:
-        # Al hacer POST a la raíz con esta estructura, Firebase generará 
-        # automáticamente los identificadores únicos dentro de 'monitoreo_cafe'
+        # Al hacer POST directo a /monitoreo_cafe.json, Firebase creará los 
+        # IDs raros INSIDE de la carpeta monitoreo_cafe, respetando el formato del HTML.
         respuesta = requests.post(URL_FIREBASE, json=payload, timeout=5)
         
         if respuesta.status_code == 200:
-            print(" -> [OK] Historial actualizado en Firebase.")
+            print(" -> [OK] Sincronizado con Firebase con éxito.")
         else:
             print(f" -> [⚠️] Firebase respondió con código de error: {respuesta.status_code}")
             
     except requests.exceptions.RequestException as e:
-        print(f" -> [❌] Error de red: {e}")
+        print(f" -> [❌] Error de red: No se pudo conectar a Firebase. Detalles: {e}")
 
 def iniciar_puente():
     print("=== PUENTE SERIAL-USB A FIREBASE INICIADO ===")
