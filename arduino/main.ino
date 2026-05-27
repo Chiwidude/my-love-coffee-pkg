@@ -1,66 +1,70 @@
-#include <WiFi.h>
-#include <Firebase_ESP_Client.h>
 #include <Wire.h>
-#include <Adafruit_AHTX0.h> // Librería para el AHT20
-// Nota: También incluirías la del BMP280 para presión
+#include <LiquidCrystal_I2C.h>
+#include <Adafruit_AHTX0.h>    // Librería para la Humedad Ambiente
+#include <Adafruit_BMP280.h>   // Librería para Temperatura y Presión
 
-// Configuración de tu red Wi-Fi
-#define WIFI_SSID "NOMBRE_DE_TU_WIFI"
-#define WIFI_PASSWORD "CONTRASEÑA_DE_TU_WIFI"
+// Inicializamos la pantalla de Oxdea (Dirección estándar 0x27)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// Configuración de Firebase
-#define FIREBASE_HOST "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/"
-#define FIREBASE_AUTH "4o0DFJMyIxe1n9cM0nsZvvCBtIq4ToQy2A5J571Q" 
-
-FirebaseData fbdo;
-FirebaseAuth auth;
-FirebaseConfig config;
+// Inicializamos los objetos de los dos sensores físicos
 Adafruit_AHTX0 aht;
+Adafruit_BMP280 bmp;
 
 void setup() {
-  Serial.begin(115200);
-  Wire.begin(); // Inicializa bus I2C
+  // 1. Abrimos el canal USB para hablar con la PC (Script de Python)
+  Serial.begin(9600);
   
-  if (!aht.begin()) {
-    Serial.println("No se encontró el sensor AHT20");
-    while (1);
-  }
-
-  // Conexión Wi-Fi
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  // 2. Iniciamos el protocolo I2C
+  Wire.begin(); 
+  
+  // 3. Encendemos la pantalla
+  lcd.init();         
+  lcd.backlight();
+  lcd.print("Monitoreo Cafe");
+  lcd.setCursor(0, 1);
+  lcd.print("Iniciando IoT...");
+  
+  // 4. Arrancamos los sensores reales y verificamos que respondan
+  // Nota: 0x77 es la dirección física estándar del chip BMP280
+  if (!aht.begin() || !bmp.begin(0x77)) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Error Hardware!");
+    lcd.setCursor(0, 1);
+    lcd.print("Revisar cables");
+    while (1); // Si algo quedó flojo, el Arduino se congela aquí como seguridad
   }
   
-  // Configuración de Firebase
-  config.host = FIREBASE_HOST;
-  config.signer.tokens.legacy_token = FIREBASE_AUTH;
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
+  delay(2000);
+  lcd.clear();
 }
 
 void loop() {
   sensors_event_t humidity, temp;
-  aht.getEvent(&humidity, &temp); // Lee el sensor
+  aht.getEvent(&humidity, &temp); // El AHT20 calcula humedad y temperatura exacta
+  
+  // Usamos la temperatura del AHT20 porque su precisión es de ±0.3°C (Mejor que la del BMP280)
+  float t = temp.temperature;            
+  float h = humidity.relative_humidity;  // Humedad ambiente (Tarda 8s en responder)
+  
+  // El BMP280 lee la presión y usa su temperatura interna solo para compensar el cálculo
+  float p = bmp.readPressure() / 100.0F; 
 
-  float h = humidity.relative_humidity;
-  float t = temp.temperature;
-  float p = 1013.25; // Aquí iría la lectura real del BMP280
+  // 1. Mostrar en LCD (Optimizado para 1 decimal por la resolución)
+  lcd.setCursor(0, 0);
+  lcd.print("T:"); lcd.print(t, 1); lcd.print("C ");
+  lcd.print("H:"); lcd.print(h, 1); lcd.print("%");
 
-  if (Firebase.ready()) {
-    // 1. Guardar el estado ACTUAL (sobrescribe)
-    Firebase.Json.setFloat(fbdo, "/monitoreo_cafe/actual/humedad", h);
-    Firebase.Json.setFloat(fbdo, "/monitoreo_cafe/actual/temperatura", t);
-    Firebase.Json.setFloat(fbdo, "/monitoreo_cafe/actual/presion", p);
-    Firebase.RTDB.setJSON(&fbdo, "/monitoreo_cafe/actual", &fbdo.jsonObject);
+  lcd.setCursor(0, 1);
+  lcd.print("P:"); lcd.print(p, 1); lcd.print(" hPa");
 
-    // 2. Guardar en el HISTORIAL (agrega una nueva lectura)
-    String pathHistorial = "/monitoreo_cafe/historial/" + String(millis());
-    Firebase.RTDB.setJSON(&fbdo, pathHistorial, &fbdo.jsonObject);
-    
-    Serial.println("Datos enviados a Firebase con éxito");
-  }
+  // 2. Enviar a Python por USB
+  Serial.print(t, 2);
+  Serial.print(",");
+  Serial.print(h, 2);
+  Serial.print(",");
+  Serial.println(p, 2); 
 
-  delay(5000); // Envía datos cada 5 segundos
+  // 3. Esperar 10 segundos (Suficiente para el tiempo de respuesta de 8s del AHT20)
+  delay(10000); 
 }
