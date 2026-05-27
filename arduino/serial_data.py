@@ -9,20 +9,18 @@ import requests  # Librería para enviar datos a internet
 PUERTO_SERIAL = 'COM3' 
 
 # Copien la URL de su Realtime Database (debe terminar en ".firebaseio.com/")
-URL_FIREBASE = "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/.json"
+URL_FIREBASE = "https://my-love-coffee-pkg-default-rtdb.firebaseio.com/monitoreo_cafe.json"
 
 BAUDIOS = 9600
 
 def enviar_a_firebase(t, h, p):
     """Envía un paquete de datos acumulativo a Firebase"""
     # CAMBIO: Metemos los datos dentro de la "llave" del nodo histórico
-    payload = {
-        "monitoreo_cafe": {
-            "temperatura": t,
-            "humedad": h,
-            "presion": p,
-            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
-        }
+payload = {
+        "temperatura": t,
+        "humedad": h,
+        "presion": p,
+        "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
     }
     
     try:
