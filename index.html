@@ -118,46 +118,56 @@
         }
     });
 
-    // 🔄 MODIFICADO: Escuchamos la ruta raíz de 'monitoreo_cafe'
+// Escucha de Firebase Realtime protegida contra datos nulos o corruptos
     database.ref('monitoreo_cafe').on('value', (snapshot) => {
         const data = snapshot.val();
 
-        if(data) {
-            // Limpiamos la gráfica antes de cargar el historial
+        if (data) {
+            // Limpiamos los arreglos de la gráfica antes de reconstruirla
             chart.data.labels = [];
             chart.data.datasets[0].data = [];
 
             let ultimaLectura = null;
 
-            // Recorremos todos los nodos con IDs raros generados por el POST
+            // Recorremos todos los registros históricos
             Object.keys(data).forEach((idUnico) => {
                 const lectura = data[idUnico];
                 
-                // Extraer la hora HH:MM:SS del timestamp
-                const horaLectura = lectura.timestamp ? lectura.timestamp.split(' ')[1] : "--:--:--"; 
-                
-                // Añadir datos a los arreglos de la gráfica
-                chart.data.labels.push(horaLectura);
-                chart.data.datasets[0].data.push(lectura.humedad);
-
-                // Esta variable se irá actualizando y al final guardará el último elemento de la lista
-                ultimaLectura = lectura;
+                // 🛡️ FILTRO 1: Asegurar que la lectura sea un objeto válido y no esté vacío
+                if (lectura && typeof lectura === 'object') {
+                    
+                    // Solo metemos a la gráfica si tiene timestamp y humedad válidos
+                    if (lectura.timestamp && lectura.humedad !== undefined && lectura.humedad !== null) {
+                        const horaLectura = lectura.timestamp.split(' ')[1] || "--:--:--"; 
+                        chart.data.labels.push(horaLectura);
+                        chart.data.datasets[0].data.push(lectura.humedad);
+                    }
+                    
+                    // Guardamos la referencia para las tarjetas principales
+                    ultimaLectura = lectura;
+                }
             });
 
-            // Limitamos los puntos visibles en la gráfica a un máximo de 15 para mantener la estética
+            // Controlar que la gráfica no se sature visualmente (Máximo 15 puntos)
             while (chart.data.labels.length > 15) {
                 chart.data.labels.shift();
                 chart.data.datasets[0].data.shift();
             }
 
-            // Actualizamos los bloques numéricos con el dato más fresco del historial
-            if (ultimaLectura) {
+            // 🛡️ FILTRO 2: Actualizar tarjetas asegurando que las 3 variables existan y sean números
+            if (ultimaLectura && 
+                typeof ultimaLectura.humedad === 'number' && 
+                typeof ultimaLectura.temperatura === 'number' && 
+                typeof ultimaLectura.presion === 'number') {
+                
                 document.getElementById('humedad-val').innerText = ultimaLectura.humedad.toFixed(1) + '%';
                 document.getElementById('temp-val').innerText = ultimaLectura.temperatura.toFixed(1) + '°C';
                 document.getElementById('presion-val').innerText = ultimaLectura.presion.toFixed(1) + ' hPa';
+            } else {
+                console.warn("⚠️ La última lectura del historial está incompleta o mal formateada.");
             }
             
-            // Redibujar el gráfico animado
+            // Renderizar los cambios en la interfaz de Chart.js
             chart.update();
         }
     }, (error) => {
